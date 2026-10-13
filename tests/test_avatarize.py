@@ -98,3 +98,21 @@ def test_cli_rejects_unknown_pose(tmp_path, capsys):
     cli.main(["new", str(avatar)])
     assert cli.main(["render", str(avatar), "--pose", "moonwalk"]) == 2
     assert "unknown pose" in capsys.readouterr().err
+
+
+def test_looks_only_describe_real_values(catalog):
+    for category, notes in cli.looks().items():
+        assert category in catalog, category
+        ids = {p["id"] for p in catalog[category]["presets"]}
+        names = {c["name"] for c in catalog[category]["colors"][0]}
+        assert set(notes) <= {"about", "presets", "colors"}, category
+        assert set(notes.get("presets", {})) <= ids, category
+        assert set(notes.get("colors", {})) <= names, category
+
+
+def test_options_show_looks(capsys):
+    assert cli.main(["options", "head"]) == 0
+    assert "| looks: widest at the jaw" in capsys.readouterr().out
+    assert cli.main(["options", "earrings_right", "--json"]) == 0
+    entry = json.loads(capsys.readouterr().out)
+    assert entry["about"] and next(p for p in entry["presets"] if p["id"] == "roundStud")["looks"]

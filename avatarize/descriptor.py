@@ -6,7 +6,8 @@ so nothing Apple ships is copied into this repo.
 Assignment keys:
   <category>=<preset id>          e.g. hair=curly_long_upDo_fringe
   <category>.color=<color name>   e.g. hair.color=Auburn       (also .color2 / .color3)
-  <category>.shade=<-1..1>        lighter/darker shade of the main color, e.g. head.shade=0.3
+  <category>.shade=<-1..1>        darker/lighter shade of the main color, e.g. hair.shade=0.3
+                                  (for head it shifts skin undertone: golden below 0, rosy above)
 """
 
 from __future__ import annotations

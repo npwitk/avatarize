@@ -35,7 +35,7 @@ uv run avatarize guide     # the whole workflow on one screen
 
 ```sh
 avatarize options                 # categories: hair, head, eyes, eyewear, outfit, ...
-avatarize options hair            # every hair style and color, with descriptions
+avatarize options hair            # every hair style and color, with what each one looks like
 avatarize poses                   # every pose
 avatarize poses --search wave
 ```
@@ -90,12 +90,15 @@ Only use photos of people who have agreed to it, and get a parent's or guardian'
 
 A Memoji is a small JSON descriptor. It picks a preset for each feature and a named color with a shade for each colorable part. `avatarize/native/avtbridge.m` is a small Objective-C helper, compiled on first use. It asks AvatarKit for the catalog of features and poses, checks descriptors, and renders stickers with clipping correction. It then crops each image to its visible pixels and centers it on a square canvas.
 
+AvatarKit's own names are terse and sometimes misleading (`head=trapezoid_medium`, or `hair.color=Golden Brown`, which renders ginger). `avatarize/looks.json` adds a plain description of what each preset and color looks like, written by rendering every one of them side by side. `options` prints it after each label, as `looks:` (and in `--json`), so an agent can pick from text instead of rendering to find out. `scripts/render_catalog.py` regenerates those contact sheets; rerun it and review the descriptions after a macOS update adds or changes presets.
+
 ## Development
 
 ```sh
 uv run pytest                                     # macOS only
 uv run ruff check . && uv run ruff format --check .
 uv run --with pillow scripts/readme_gallery.py    # regenerate docs/gallery.png (--seed N for a new mix)
+uv run --with pillow scripts/render_catalog.py    # contact sheets of every preset in catalog/, for looks.json
 ```
 
 CI (`.github/workflows/ci.yml`) has two jobs:

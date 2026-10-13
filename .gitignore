@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 avatars/
 .DS_Store
+catalog/

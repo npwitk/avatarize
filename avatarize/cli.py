@@ -6,9 +6,12 @@ import argparse
 import html
 import json
 import sys
+from functools import cache
 from pathlib import Path
 
 from . import bridge, descriptor
+
+LOOKS = Path(__file__).resolve().parent / "looks.json"
 
 DEFAULT_POSE = "pleasant_neutral"
 
@@ -20,7 +23,7 @@ Workflow (works the same for a person or an AI agent):
 
   1. Discover what can be set
        avatarize options                  list categories (hair, head, eyes, eyewear, outfit, ...)
-       avatarize options hair             allowed presets and colors for one category, with descriptions
+       avatarize options hair             allowed presets and colors for one category, with what each one looks like
        avatarize poses                    list poses (thumbs_up, person_waving, yearbook, ...)
      Add --json to any of these for machine-readable output.
 
@@ -29,6 +32,7 @@ Workflow (works the same for a person or an AI agent):
        avatarize set alex.json hair=curly_long_upDo_fringe hair.color=Auburn hair.shade=0.3
        avatarize set alex.json head.color="Fitzpatrick 2" eyes.color=Green eyewear=rectangle eyewear.color=Black
      Keys:  <category>=<preset>   <category>.color=<name> (.color2 / .color3)   <category>.shade=<-1..1>
+     shade is darker (-1) to lighter (1), except head.shade, which shifts skin undertone (golden to rosy).
      Values match an id, or a description from `options` (case-insensitive). Bad values fail with suggestions.
 
   3. Check and render
@@ -41,8 +45,10 @@ Workflow (works the same for a person or an AI agent):
 
 Matching a photo: look at the photo, then set at least: age, head (+ head.color for skin tone, head.shade),
 hair (+ hair.color, hair.shade), eyebrows (+ color), eyes (+ eyes.color), nose, lips, facialhair, eyewear,
-headwear, earrings_left/right, outfit (+ outfit.color). Render the default pose, compare with the photo,
-adjust with `set`, and re-render until it looks right.
+headwear, earrings_left/right, outfit (+ outfit.color). In `options`, the `# ...` line explains how a
+category's ids are built and the `looks:` notes describe each rendered preset and color, so choose from
+those instead of the names alone (several names mislead, e.g. hair.color=Golden Brown is ginger). Then render
+the default pose, compare with the photo, and adjust with `set` only where it still differs.
 
 Renders are square transparent PNGs, trimmed to the avatar and centered, so nothing is clipped.
 """
@@ -68,6 +74,15 @@ def cmd_guide(args) -> int:
     return 0
 
 
+@cache
+def looks() -> dict:
+    """What presets and colors actually look like, written from renders (scripts/render_catalog.py).
+
+    {category: {"about": str, "presets": {id: str}, "colors": {name: str}}}; any part may be missing.
+    """
+    return json.loads(LOOKS.read_text()) if LOOKS.exists() else {}
+
+
 def cmd_options(args) -> int:
     catalog = bridge.catalog()
     if not args.category:
@@ -79,18 +94,32 @@ def cmd_options(args) -> int:
                 print(f"{name:<22} {len(entry['presets']):>3} presets  {colors} color slot(s)")
         return 0
     try:
-        entry = catalog[descriptor.resolve_category(args.category, catalog)]
+        category = descriptor.resolve_category(args.category, catalog)
     except descriptor.AssignmentError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
+    entry = catalog[category]
+    # Left/right pairs share one set of descriptions, written for the left side.
+    notes = looks().get(category) or looks().get(category.replace("_right", "_left"), {})
+    preset_looks, color_looks = notes.get("presets", {}), notes.get("colors", {})
     if args.json:
+        entry = {
+            **entry,
+            "about": notes.get("about", ""),
+            "presets": [{**p, "looks": preset_looks.get(p["id"], "")} for p in entry["presets"]],
+            "colors": [[{**c, "looks": color_looks.get(c["name"], "")} for c in slot] for slot in entry["colors"]],
+        }
         print(json.dumps(entry, indent=2))
         return 0
+    if notes.get("about"):
+        print(f"# {notes['about']}")
     for p in entry["presets"]:
-        print(f"{args.category}={p['id']:<45} {p['label']}")
+        look = preset_looks.get(p["id"])
+        print(f"{category}={p['id']:<45} {p['label']}" + (f" | looks: {look}" if look else ""))
     for field, slot in descriptor.COLOR_SLOTS.items():
         for c in entry["colors"][slot]:
-            print(f"{args.category}.{field}={c['name']:<37} {c['label']}")
+            look = color_looks.get(c["name"]) if slot == 0 else None
+            print(f"{category}.{field}={c['name']:<37} {c['label']}" + (f" | looks: {look}" if look else ""))
     return 0
 
 
