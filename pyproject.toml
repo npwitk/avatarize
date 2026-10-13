@@ -1,0 +1,24 @@
+[project]
+name = "avatarize"
+version = "0.1.0"
+description = "A command-line tool for building and rendering Memoji-style avatars and stickers on macOS."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+avatarize = "avatarize.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["avatarize"]
+
+[tool.ruff]
+line-length = 130

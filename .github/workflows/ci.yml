@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --only-group dev ruff check .
+      - run: uv run --only-group dev ruff format --check .
+
+  test:
+    # Rendering needs AvatarKit, which only exists on macOS.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - run: uv run avatarize guide
+      - run: uv run pytest -v
+      - name: Render sample poses
+        run: |
+          uv run avatarize new sample.json hair=curly_long_upDo_fringe hair.color=Auburn eyewear=rectangle
+          uv run avatarize check sample.json
+          uv run avatarize render sample.json --pose thumbs_up --pose person_waving --pose yearbook --out renders
+          uv run avatarize sheet renders
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sample-renders
+          path: renders/
